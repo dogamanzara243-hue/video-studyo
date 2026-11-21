@@ -1021,6 +1021,45 @@ demo.launch(share=True, debug=False)</code></pre>
       });
     }
 
+  
+    
+    (function() {
+      const dlLink = document.getElementById("downloadMp4Link");
+      if (!dlLink) return;
+
+      const freshLink = dlLink.cloneNode(true);
+      dlLink.parentNode.replaceChild(freshLink, dlLink);
+
+      freshLink.addEventListener("click", async (e) => {
+        const href = freshLink.getAttribute("href");
+        if (!href || href === "#") return;
+        if (href.startsWith("blob:")) return;
+
+        e.preventDefault();
+        const origText = freshLink.textContent;
+        freshLink.textContent = "⏳ İndiriliyor...";
+        try {
+          const resp = await fetch(href);
+          if (!resp.ok) throw new Error("Ağ yanıtı hatası: " + resp.status);
+          const blob = await resp.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = blobUrl;
+          a.download = freshLink.getAttribute("download") || "ai_video.mp4";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+          freshLink.textContent = "✅ İndirildi";
+        } catch (err) {
+          window.open(href, "_blank", "noopener");
+          freshLink.textContent = origText;
+        } finally {
+          setTimeout(() => { freshLink.textContent = origText; }, 2500);
+        }
+      });
+    })();
+
   </script>
 </body>
 </html>
