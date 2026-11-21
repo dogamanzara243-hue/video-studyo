@@ -69,6 +69,21 @@
 
       
       <!-- MÜZİK + ALTYAZI STİLİ + GEÇİŞ AYARLARI -->
+      
+      <!-- HAZIR ŞABLONLAR + TASLAK YÖNETİMİ + COLAB DURUMU -->
+      <div id="studio-extras-bar" class="bg-slate-950/80 border border-slate-800 rounded-xl p-3.5 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-slate-400 font-semibold">Şablonlar:</span>
+          <button id="tplStoryBtn" type="button" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 font-semibold transition">📖 Kısa Hikaye (3 Sahne)</button>
+          <button id="tplMotivBtn" type="button" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 font-semibold transition">🔥 Motivasyon (3 Sahne)</button>
+          <button id="importBridgeBtn" type="button" class="px-2.5 py-1.5 rounded-lg bg-indigo-600/25 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 font-semibold transition">📥 Stüdyolardan Al</button>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <span id="colabStatusBadge" class="px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 font-semibold">🟡 Colab Linki Girilmedi</span>
+          <button id="clearDraftBtn" type="button" class="px-2.5 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/35 text-rose-300 border border-rose-500/30 font-semibold transition">🗑️ Taslağı Sıfırla</button>
+        </div>
+      </div>
+
       <div id="kurgu-ayarlari" class="bg-slate-800/50 border border-slate-700/80 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <label class="block text-xs font-semibold text-emerald-300 mb-1">🎵 Altyazı Stili</label>
@@ -564,6 +579,137 @@ demo.launch(share=True, debug=False)</code></pre>
         bgAudioPlayer.currentTime = 0;
         if (stageImg) stageImg.style.transform = "scale(1)";
       });
+    }
+
+  
+    
+    const tplStoryBtn = document.getElementById("tplStoryBtn");
+    const tplMotivBtn = document.getElementById("tplMotivBtn");
+    const importBridgeBtn = document.getElementById("importBridgeBtn");
+    const clearDraftBtn = document.getElementById("clearDraftBtn");
+    const colabStatusBadge = document.getElementById("colabStatusBadge");
+
+    function updateColabBadge() {
+      if (!colabStatusBadge || !renderApiUrlEl) return;
+      const val = renderApiUrlEl.value.trim();
+      if (val.startsWith("http")) {
+        colabStatusBadge.textContent = "🟢 Colab API Bağlı";
+        colabStatusBadge.className = "px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-semibold";
+      } else {
+        colabStatusBadge.textContent = "🟡 Colab Linki Girilmedi";
+        colabStatusBadge.className = "px-2.5 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 font-semibold";
+      }
+    }
+
+    if (renderApiUrlEl) {
+      renderApiUrlEl.addEventListener("input", updateColabBadge);
+      updateColabBadge();
+    }
+
+    function saveDraftNow() {
+      if (!scenesContainer) return;
+      const items = [...scenesContainer.querySelectorAll(".scene-card")].map(c => ({
+        img: c.querySelector(".scene-img")?.value.trim() || "",
+        cap: c.querySelector(".scene-cap")?.value.trim() || "",
+        dur: Number(c.querySelector(".scene-dur")?.value) || 4
+      }));
+      localStorage.setItem("video_studyo_draft_v1", JSON.stringify({
+        scenes: items,
+        voice: voiceCodeEl?.value || "tr-TR-AhmetNeural",
+        style: subStyleSelect?.value || "classic",
+        transition: transitionSelect?.value || "zoom",
+        musicUrl: musicUrlInput?.value || ""
+      }));
+    }
+
+    function loadTemplates(list) {
+      if (!scenesContainer || typeof addScene !== "function") return;
+      scenesContainer.innerHTML = "";
+      list.forEach(s => addScene(s.img, s.cap, s.dur));
+      saveDraftNow();
+      if (typeof showStatus === "function") showStatus("✅ Hazır şablon sahneleri yüklendi.");
+    }
+
+    if (tplStoryBtn) {
+      tplStoryBtn.addEventListener("click", () => loadTemplates([
+        { img: "https://image.pollinations.ai/prompt/warm%202d%20comic%20book%20mysterious%20key%20on%20wooden%20table%20night%208k?width=768&height=1344&nologo=true", cap: "Eski sandığın içinden parlayan bir anahtar çıktı.", dur: 4 },
+        { img: "https://image.pollinations.ai/prompt/warm%202d%20comic%20book%20ancient%20door%20glowing%20light%208k?width=768&height=1344&nologo=true", cap: "Kapı açıldığında kimsenin bilmediği bir yol göründü.", dur: 4 },
+        { img: "https://image.pollinations.ai/prompt/warm%202d%20comic%20book%20hero%20stepping%20into%20sunrise%208k?width=768&height=1344&nologo=true", cap: "Cesaret edenler yeni bir dünyanın kapısını aralar.", dur: 4 }
+      ]));
+    }
+
+    if (tplMotivBtn) {
+      tplMotivBtn.addEventListener("click", () => loadTemplates([
+        { img: "https://image.pollinations.ai/prompt/cinematic%20athlete%20training%20at%20dawn%208k?width=768&height=1344&nologo=true", cap: "Kimse görmezken attığın adımlar geleceğini kurar.", dur: 4 },
+        { img: "https://image.pollinations.ai/prompt/stoic%20marble%20sculpture%20golden%20light%208k?width=768&height=1344&nologo=true", cap: "Disiplin, geçici heveslerden çok daha güçlüdür.", dur: 4 },
+        { img: "https://image.pollinations.ai/prompt/cinematic%20city%20lights%20at%20night%20success%208k?width=768&height=1344&nologo=true", cap: "Bugün vazgeçmezsen yarın teşekkür edeceksin.", dur: 4 }
+      ]));
+    }
+
+    function consumeBridgeData(manual = false) {
+      if (!scenesContainer || typeof addScene !== "function") return;
+      let imported = false;
+      const singleRaw = localStorage.getItem("pending_video_scene");
+      if (singleRaw) {
+        try {
+          const s = JSON.parse(singleRaw);
+          addScene(s.img || "", s.cap || "", s.dur || 4);
+          imported = true;
+        } catch (e) {}
+        localStorage.removeItem("pending_video_scene");
+      }
+      const batchRaw = localStorage.getItem("pending_video_scenes_batch");
+      if (batchRaw) {
+        try {
+          const arr = JSON.parse(batchRaw);
+          if (Array.isArray(arr) && arr.length) {
+            arr.forEach(s => addScene(s.img || "", s.cap || "", s.dur || 4));
+            imported = true;
+          }
+        } catch (e) {}
+        localStorage.removeItem("pending_video_scenes_batch");
+      }
+      if (imported) {
+        saveDraftNow();
+        if (typeof showStatus === "function") showStatus("✅ Diğer stüdyolardan aktarılan içerik sahneye eklendi!");
+      } else if (manual && typeof showStatus === "function") {
+        showStatus("Aktarılacak yeni veri bulunamadı.", true);
+      }
+    }
+
+    if (importBridgeBtn) importBridgeBtn.addEventListener("click", () => consumeBridgeData(true));
+
+    if (clearDraftBtn) {
+      clearDraftBtn.addEventListener("click", () => {
+        localStorage.removeItem("video_studyo_draft_v1");
+        if (scenesContainer && typeof addScene === "function") {
+          scenesContainer.innerHTML = "";
+          addScene("", "İlk sahne altyazısını buraya yazın", 4);
+        }
+        if (typeof showStatus === "function") showStatus("🗑️ Taslak sıfırlandı.");
+      });
+    }
+
+    // Açılışta taslak veya köprü verisi yükle
+    const savedDraftRaw = localStorage.getItem("video_studyo_draft_v1");
+    if (savedDraftRaw && scenesContainer && typeof addScene === "function") {
+      try {
+        const d = JSON.parse(savedDraftRaw);
+        if (Array.isArray(d.scenes) && d.scenes.length) {
+          scenesContainer.innerHTML = "";
+          d.scenes.forEach(s => addScene(s.img || "", s.cap || "", s.dur || 4));
+        }
+        if (d.voice && voiceCodeEl) voiceCodeEl.value = d.voice;
+        if (d.style && subStyleSelect) { subStyleSelect.value = d.style; if (typeof applySubStyle === "function") applySubStyle(); }
+        if (d.transition && transitionSelect) transitionSelect.value = d.transition;
+        if (d.musicUrl && musicUrlInput) { musicUrlInput.value = d.musicUrl; if (typeof bgAudioPlayer !== "undefined") bgAudioPlayer.src = d.musicUrl; }
+      } catch (e) {}
+    }
+
+    consumeBridgeData(false);
+    if (scenesContainer) {
+      scenesContainer.addEventListener("input", saveDraftNow);
+      scenesContainer.addEventListener("click", () => setTimeout(saveDraftNow, 50));
     }
 
   </script>
