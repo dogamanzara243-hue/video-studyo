@@ -262,132 +262,178 @@
           📋 Kodu Kopyala
         </button>
         <pre id="colabRenderCode" class="bg-slate-900 border border-slate-800 rounded-xl p-4 pt-11 text-xs text-slate-300 overflow-x-auto max-h-80"><code>!pip install -q edge-tts moviepy pillow gradio requests numpy
-import os, json, uuid, requests, edge_tts, gradio as gr
+
+import asyncio
+import json
+import os
+import uuid
+import edge_tts
+import gradio as gr
+import numpy as np
+import requests
 from PIL import Image, ImageDraw, ImageFont
-from moviepy.editor import ImageClip, AudioFileClip, CompositeVideoClip, concatenate_videoclips, afx
 
-def altyazi_ekle_kare(img_path, text, out_path, style="classic", size=(1080, 1920)):
-    im = Image.open(img_path).convert("RGB")
-    target_w, target_h = size
-    src_w, src_h = im.size
-    scale = max(target_w / src_w, target_h / src_h)
-    new_w, new_h = int(src_w * scale), int(src_h * scale)
-    im = im.resize((new_w, new_h), Image.Resampling.LANCZOS)
-    left = (new_w - target_w) // 2
-    top = (new_h - target_h) // 2
-    im = im.crop((left, top, left + target_w, top + target_h))
+try:
+  from moviepy.editor import AudioFileClip, CompositeAudioClip, CompositeVideoClip, ImageClip, concatenate_videoclips
+except Exception:
+  from moviepy import AudioFileClip, CompositeAudioClip, CompositeVideoClip, ImageClip, concatenate_videoclips
 
-    draw = ImageDraw.Draw(im)
-    box_top, box_bottom = int(target_h * 0.74), int(target_h * 0.87)
 
-    if style == "neon":
-        fill_col, border_col, text_col = (15, 10, 32), (34, 211, 238), (103, 232, 249)
-    elif style == "cinema":
-        fill_col, border_col, text_col = (0, 0, 0), (120, 120, 120), (255, 255, 255)
+def prepare_frame(img_path, text, out_path, size=(1080, 1920), style="classic"):
+  im = Image.open(img_path).convert("RGB")
+  target_w, target_h = size
+  src_w, src_h = im.size
+  scale = max(target_w / max(src_w, 1), target_h / max(src_h, 1))
+  new_w, new_h = int(src_w * scale), int(src_h * scale)
+  im = im.resize((new_w, new_h), Image.Resampling.LANCZOS)
+  left = max(0, (new_w - target_w) // 2)
+  top = max(0, (new_h - target_h) // 2)
+  im = im.crop((left, top, left + target_w, top + target_h))
+
+  draw = ImageDraw.Draw(im)
+  box_top = int(target_h * 0.74)
+  box_bottom = int(target_h * 0.87)
+
+  if style == "neon":
+    fill_col, border_col, text_col = (15, 10, 32), (34, 211, 238), (103, 232, 249)
+  elif style == "cinema":
+    fill_col, border_col, text_col = (0, 0, 0), (120, 120, 120), (255, 255, 255)
+  else:
+    fill_col, border_col, text_col = (10, 15, 28), (250, 204, 21), (255, 225, 90)
+
+  draw.rounded_rectangle(
+      [(60, box_top), (target_w - 60, box_bottom)],
+      radius=28,
+      fill=fill_col,
+      outline=border_col,
+      width=3,
+  )
+
+  words = (text or "").strip().split()
+  lines, current = [], ""
+  for w in words:
+    test = f"{current} {w}".strip()
+    if len(test) <= 34:
+      current = test
     else:
-        fill_col, border_col, text_col = (10, 15, 28), (250, 204, 21), (255, 225, 90)
+      if current:
+        lines.append(current)
+      current = w
+  if current:
+    lines.append(current)
+  lines = lines[:3]
 
-    draw.rounded_rectangle([(60, box_top), (target_w - 60, box_bottom)], radius=28, fill=fill_col, outline=border_col, width=3)
+  try:
+    font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 44)
+  except Exception:
+    font = ImageFont.load_default()
 
-    words = text.strip().split()
-    lines, current = [], ""
-    for w in words:
-        test = f"{current} {w}".strip()
-        if len(test) <= 34:
-            current = test
-        else:
-            if current: lines.append(current)
-            current = w
-    if current: lines.append(current)
-    lines = lines[:3]
+  y = box_top + 28
+  for line in lines:
+    bbox = draw.textbbox((0, 0), line, font=font)
+    tw = bbox[2] - bbox[0]
+    x = (target_w - tw) // 2
+    draw.text((x + 2, y + 2), line, font=font, fill=(0, 0, 0))
+    draw.text((x, y), line, font=font, fill=text_col)
+    y += 58
 
-    try:
-        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 44)
-    except Exception:
-        font = ImageFont.load_default()
+  im.save(out_path, quality=90)
 
-    y = box_top + 28
-    for line in lines:
-        bbox = draw.textbbox((0, 0), line, font=font)
-        tw = bbox[2] - bbox[0]
-        x = (target_w - tw) // 2
-        draw.text((x + 2, y + 2), line, font=font, fill=(0, 0, 0))
-        draw.text((x, y), line, font=font, fill=text_col)
-        y += 58
-
-    im.save(out_path, quality=92)
 
 async def render_coklu_mp4(scenes_json, voice="tr-TR-AhmetNeural", rate="+5%", sub_style="classic", transition="zoom", music_url=""):
+  try:
     scenes = json.loads(scenes_json)
-    if not scenes or not isinstance(scenes, list):
-        raise gr.Error("En az bir sahne göndermelisiniz.")
+  except Exception as e:
+    raise gr.Error(f"Sahne JSON hatası: {e}")
 
-    work_dir = f"/tmp/render_{uuid.uuid4().hex[:8]}"
-    os.makedirs(work_dir, exist_ok=True)
-    clips = []
+  if not isinstance(scenes, list) or len(scenes) == 0:
+    raise gr.Error("En az bir sahne göndermelisiniz.")
 
-    for idx, s in enumerate(scenes):
-        img_url = (s.get("img") or "").strip()
-        caption = (s.get("cap") or f"Sahne {idx + 1}").strip()
-        min_dur = max(1.0, float(s.get("dur") or 4))
+  work_dir = f"/tmp/render_{uuid.uuid4().hex[:8]}"
+  os.makedirs(work_dir, exist_ok=True)
+  clips = []
 
-        img_raw = os.path.join(work_dir, f"raw_{idx}.jpg")
-        img_styled = os.path.join(work_dir, f"frame_{idx}.jpg")
-        audio_mp3 = os.path.join(work_dir, f"voice_{idx}.mp3")
+  for idx, s in enumerate(scenes):
+    img_url = (s.get("img") or "").strip()
+    caption = (s.get("cap") or f"Sahne {idx + 1}").strip()
+    min_dur = max(1.5, float(s.get("dur") or 4))
 
-        if img_url:
-            r = requests.get(img_url, timeout=25)
-            r.raise_for_status()
-            with open(img_raw, "wb") as f:
-                f.write(r.content)
-        else:
-            Image.new("RGB", (1080, 1920), (20, 28, 48)).save(img_raw)
+    img_raw = os.path.join(work_dir, f"raw_{idx}.jpg")
+    img_styled = os.path.join(work_dir, f"frame_{idx}.jpg")
+    audio_mp3 = os.path.join(work_dir, f"voice_{idx}.mp3")
 
-        altyazi_ekle_kare(img_raw, caption, img_styled, style=sub_style)
-        await edge_tts.Communicate(caption, voice, rate=rate).save(audio_mp3)
-        audio_clip = AudioFileClip(audio_mp3)
-        final_dur = max(min_dur, audio_clip.duration + 0.35)
+    try:
+      if img_url:
+        resp = requests.get(img_url, timeout=20)
+        resp.raise_for_status()
+        with open(img_raw, "wb") as f:
+          f.write(resp.content)
+      else:
+        Image.new("RGB", (1080, 1920), (20, 28, 48)).save(img_raw)
+    except Exception:
+      Image.new("RGB", (1080, 1920), (20, 28, 48)).save(img_raw)
 
-        base_canvas = ImageClip(img_styled).set_duration(final_dur)
-        if transition == "zoom":
-            fg_clip = ImageClip(img_styled).set_duration(final_dur).resize(lambda t: 1.0 + 0.06 * (t / max(final_dur, 0.1))).set_position("center")
-        elif transition == "pan":
-            fg_clip = ImageClip(img_styled).set_duration(final_dur).resize(1.08).set_position(lambda t: (-30 * (t / max(final_dur, 0.1)), "center"))
-        else:
-            fg_clip = base_canvas
+    prepare_frame(img_raw, caption, img_styled, size=(1080, 1920), style=sub_style)
 
-        comp = CompositeVideoClip([base_canvas, fg_clip], size=(1080, 1920)).set_audio(audio_clip)
-        clips.append(comp)
+    try:
+      await edge_tts.Communicate(caption, voice, rate=rate).save(audio_mp3)
+      audio_clip = AudioFileClip(audio_mp3)
+      dur = max(min_dur, float(audio_clip.duration) + 0.3)
+      clip = ImageClip(img_styled).set_duration(dur).set_audio(audio_clip)
+    except Exception:
+      dur = min_dur
+      clip = ImageClip(img_styled).set_duration(dur)
 
-    final_video = concatenate_videoclips(clips, method="compose")
+    clips.append(clip)
 
-    if music_url and music_url.strip():
-        try:
-            m_path = os.path.join(work_dir, "bg_music.mp3")
-            mr = requests.get(music_url.strip(), timeout=25)
-            mr.raise_for_status()
-            with open(m_path, "wb") as f:
-                f.write(mr.content)
-            bgm = AudioFileClip(m_path).volumex(0.18).loop(duration=final_video.duration)
-            from moviepy.editor import CompositeAudioClip
-            final_video = final_video.set_audio(CompositeAudioClip([final_video.audio, bgm]))
-        except Exception:
-            pass
+  final_video = concatenate_videoclips(clips, method="compose")
 
-    out_mp4 = os.path.join(work_dir, "final_video.mp4")
-    final_video.write_videofile(out_mp4, fps=24, codec="libx264", audio_codec="aac", logger=None)
-    return out_mp4
+  if music_url and music_url.strip():
+    try:
+      m_path = os.path.join(work_dir, "bgm.mp3")
+      mr = requests.get(music_url.strip(), timeout=20)
+      mr.raise_for_status()
+      with open(m_path, "wb") as f:
+        f.write(mr.content)
+      bgm = AudioFileClip(m_path).volumex(0.18)
+      if bgm.duration < final_video.duration:
+        loops = int(final_video.duration // max(bgm.duration, 1)) + 1
+        bgm = concatenate_videoclips([bgm] * loops).subclip(0, final_video.duration)
+      else:
+        bgm = bgm.subclip(0, final_video.duration)
+      if final_video.audio is not None:
+        final_video = final_video.set_audio(CompositeAudioClip([final_video.audio, bgm]))
+      else:
+        final_video = final_video.set_audio(bgm)
+    except Exception:
+      pass
 
-with gr.Blocks(title="AI Çok Sahneli MP4 Render Motoru") as demo:
-    scenes_in = gr.Textbox(label="Sahneler JSON")
-    voice_in = gr.Textbox(value="tr-TR-AhmetNeural", label="Ses")
-    rate_in = gr.Textbox(value="+5%", label="Hız")
-    style_in = gr.Textbox(value="classic", label="Altyazı Stili")
-    trans_in = gr.Textbox(value="zoom", label="Geçiş")
-    music_in = gr.Textbox(value="", label="Müzik URL")
-    btn = gr.Button("MP4 Üret", variant="primary")
-    vid_out = gr.Video(label="Hazır MP4")
-    btn.click(fn=render_coklu_mp4, inputs=[scenes_in, voice_in, rate_in, style_in, trans_in, music_in], outputs=vid_out, api_name="mp4_uret")
+  out_mp4 = os.path.join(work_dir, "final_video.mp4")
+  final_video.write_videofile(
+      out_mp4,
+      fps=24,
+      codec="libx264",
+      audio_codec="aac",
+      logger=None,
+  )
+  return out_mp4
+
+
+with gr.Blocks(title="AI Çok Sahneli MP4 Render") as demo:
+  scenes_in = gr.Textbox(label="Sahneler JSON")
+  voice_in = gr.Textbox(value="tr-TR-AhmetNeural", label="Ses")
+  rate_in = gr.Textbox(value="+5%", label="Hız")
+  style_in = gr.Textbox(value="classic", label="Altyazı Stili")
+  trans_in = gr.Textbox(value="zoom", label="Geçiş")
+  music_in = gr.Textbox(value="", label="Müzik URL")
+  btn = gr.Button("MP4 Üret", variant="primary")
+  vid_out = gr.Video(label="Hazır MP4")
+  btn.click(
+      fn=render_coklu_mp4,
+      inputs=[scenes_in, voice_in, rate_in, style_in, trans_in, music_in],
+      outputs=vid_out,
+      api_name="mp4_uret",
+  )
 
 demo.launch(share=True, debug=False)</code></pre>
       </div>
