@@ -67,6 +67,36 @@
         <span>İpucu: Görsel Stüdyosu'ndan kopyaladığınız linki yapıştırabilirsiniz</span>
       </div>
 
+      
+      <!-- MÜZİK + ALTYAZI STİLİ + GEÇİŞ AYARLARI -->
+      <div id="kurgu-ayarlari" class="bg-slate-800/50 border border-slate-700/80 rounded-xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-emerald-300 mb-1">🎵 Altyazı Stili</label>
+          <select id="subStyleSelect" class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-white">
+            <option value="classic">✨ Klasik Kutu (Sarı Metin)</option>
+            <option value="cinema">🎬 Sinematik Şerit (Beyaz)</option>
+            <option value="neon">🌃 Neon Vurgulu (Camgöbeği)</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-emerald-300 mb-1">🎞️ Resim Geçiş Efekti</label>
+          <select id="transitionSelect" class="w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm text-white">
+            <option value="zoom">🔍 Yumuşak Yakınlaşma (Zoom)</option>
+            <option value="pan">↔️ Yatay Kaydırma (Pan)</option>
+            <option value="none">⏹️ Sabit / Geçişsiz</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-emerald-300 mb-1">🎶 Arka Plan Müziği (MP3/URL)</label>
+          <div class="space-y-1.5">
+            <input id="musicFileInput" type="file" accept="audio/*" class="w-full text-[11px] text-slate-300 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:bg-emerald-600 file:text-white file:font-semibold" />
+            <input id="musicUrlInput" type="url" placeholder="Veya müzik MP3 linki..." class="w-full rounded-lg bg-slate-900 border border-slate-700 px-2.5 py-1.5 text-xs text-white" />
+          </div>
+        </div>
+      </div>
+
       <div id="scenesContainer" class="space-y-3"></div>
 
       <!-- Aksiyon Butonları -->
@@ -137,9 +167,9 @@
         <pre id="colabRenderCode" class="bg-slate-900 border border-slate-800 rounded-xl p-4 pt-11 text-xs text-slate-300 overflow-x-auto max-h-80"><code>!pip install -q edge-tts moviepy pillow gradio requests numpy
 import os, json, uuid, requests, edge_tts, gradio as gr
 from PIL import Image, ImageDraw, ImageFont
-from moviepy.editor import ImageClip, AudioFileClip, CompositeVideoClip, concatenate_videoclips
+from moviepy.editor import ImageClip, AudioFileClip, CompositeVideoClip, concatenate_videoclips, afx
 
-def altyazi_ekle_kare(img_path, text, out_path, size=(1080, 1920)):
+def altyazi_ekle_kare(img_path, text, out_path, style="classic", size=(1080, 1920)):
     im = Image.open(img_path).convert("RGB")
     target_w, target_h = size
     src_w, src_h = im.size
@@ -152,7 +182,15 @@ def altyazi_ekle_kare(img_path, text, out_path, size=(1080, 1920)):
 
     draw = ImageDraw.Draw(im)
     box_top, box_bottom = int(target_h * 0.74), int(target_h * 0.87)
-    draw.rounded_rectangle([(60, box_top), (target_w - 60, box_bottom)], radius=28, fill=(10, 15, 28), outline=(70, 85, 115), width=3)
+
+    if style == "neon":
+        fill_col, border_col, text_col = (15, 10, 32), (34, 211, 238), (103, 232, 249)
+    elif style == "cinema":
+        fill_col, border_col, text_col = (0, 0, 0), (120, 120, 120), (255, 255, 255)
+    else:
+        fill_col, border_col, text_col = (10, 15, 28), (250, 204, 21), (255, 225, 90)
+
+    draw.rounded_rectangle([(60, box_top), (target_w - 60, box_bottom)], radius=28, fill=fill_col, outline=border_col, width=3)
 
     words = text.strip().split()
     lines, current = [], ""
@@ -177,12 +215,12 @@ def altyazi_ekle_kare(img_path, text, out_path, size=(1080, 1920)):
         tw = bbox[2] - bbox[0]
         x = (target_w - tw) // 2
         draw.text((x + 2, y + 2), line, font=font, fill=(0, 0, 0))
-        draw.text((x, y), line, font=font, fill=(255, 225, 90))
+        draw.text((x, y), line, font=font, fill=text_col)
         y += 58
 
     im.save(out_path, quality=92)
 
-async def render_coklu_mp4(scenes_json, voice="tr-TR-AhmetNeural", rate="+5%"):
+async def render_coklu_mp4(scenes_json, voice="tr-TR-AhmetNeural", rate="+5%", sub_style="classic", transition="zoom", music_url=""):
     scenes = json.loads(scenes_json)
     if not scenes or not isinstance(scenes, list):
         raise gr.Error("En az bir sahne göndermelisiniz.")
@@ -208,17 +246,37 @@ async def render_coklu_mp4(scenes_json, voice="tr-TR-AhmetNeural", rate="+5%"):
         else:
             Image.new("RGB", (1080, 1920), (20, 28, 48)).save(img_raw)
 
-        altyazi_ekle_kare(img_raw, caption, img_styled)
+        altyazi_ekle_kare(img_raw, caption, img_styled, style=sub_style)
         await edge_tts.Communicate(caption, voice, rate=rate).save(audio_mp3)
         audio_clip = AudioFileClip(audio_mp3)
         final_dur = max(min_dur, audio_clip.duration + 0.35)
 
         base_canvas = ImageClip(img_styled).set_duration(final_dur)
-        zoom_clip = ImageClip(img_styled).set_duration(final_dur).resize(lambda t: 1.0 + 0.06 * (t / max(final_dur, 0.1))).set_position("center")
-        comp = CompositeVideoClip([base_canvas, zoom_clip], size=(1080, 1920)).set_audio(audio_clip)
+        if transition == "zoom":
+            fg_clip = ImageClip(img_styled).set_duration(final_dur).resize(lambda t: 1.0 + 0.06 * (t / max(final_dur, 0.1))).set_position("center")
+        elif transition == "pan":
+            fg_clip = ImageClip(img_styled).set_duration(final_dur).resize(1.08).set_position(lambda t: (-30 * (t / max(final_dur, 0.1)), "center"))
+        else:
+            fg_clip = base_canvas
+
+        comp = CompositeVideoClip([base_canvas, fg_clip], size=(1080, 1920)).set_audio(audio_clip)
         clips.append(comp)
 
     final_video = concatenate_videoclips(clips, method="compose")
+
+    if music_url and music_url.strip():
+        try:
+            m_path = os.path.join(work_dir, "bg_music.mp3")
+            mr = requests.get(music_url.strip(), timeout=25)
+            mr.raise_for_status()
+            with open(m_path, "wb") as f:
+                f.write(mr.content)
+            bgm = AudioFileClip(m_path).volumex(0.18).loop(duration=final_video.duration)
+            from moviepy.editor import CompositeAudioClip
+            final_video = final_video.set_audio(CompositeAudioClip([final_video.audio, bgm]))
+        except Exception:
+            pass
+
     out_mp4 = os.path.join(work_dir, "final_video.mp4")
     final_video.write_videofile(out_mp4, fps=24, codec="libx264", audio_codec="aac", logger=None)
     return out_mp4
@@ -227,9 +285,12 @@ with gr.Blocks(title="AI Çok Sahneli MP4 Render Motoru") as demo:
     scenes_in = gr.Textbox(label="Sahneler JSON")
     voice_in = gr.Textbox(value="tr-TR-AhmetNeural", label="Ses")
     rate_in = gr.Textbox(value="+5%", label="Hız")
+    style_in = gr.Textbox(value="classic", label="Altyazı Stili")
+    trans_in = gr.Textbox(value="zoom", label="Geçiş")
+    music_in = gr.Textbox(value="", label="Müzik URL")
     btn = gr.Button("MP4 Üret", variant="primary")
     vid_out = gr.Video(label="Hazır MP4")
-    btn.click(fn=render_coklu_mp4, inputs=[scenes_in, voice_in, rate_in], outputs=vid_out, api_name="mp4_uret")
+    btn.click(fn=render_coklu_mp4, inputs=[scenes_in, voice_in, rate_in, style_in, trans_in, music_in], outputs=vid_out, api_name="mp4_uret")
 
 demo.launch(share=True, debug=False)</code></pre>
       </div>
@@ -449,6 +510,62 @@ demo.launch(share=True, debug=False)</code></pre>
     });
 
     addScene("", "İlk sahne altyazısını buraya yazın", 4);
+  
+    
+    const subStyleSelect = document.getElementById("subStyleSelect");
+    const transitionSelect = document.getElementById("transitionSelect");
+    const musicFileInput = document.getElementById("musicFileInput");
+    const musicUrlInput = document.getElementById("musicUrlInput");
+    const bgAudioPlayer = new Audio();
+    bgAudioPlayer.loop = true;
+    bgAudioPlayer.volume = 0.25;
+
+    function applySubStyle() {
+      if (!stageCaption) return;
+      const st = subStyleSelect ? subStyleSelect.value : "classic";
+      stageCaption.className = "absolute bottom-6 inset-x-3 text-center text-sm font-extrabold px-3 py-2 rounded-lg backdrop-blur-sm transition-all";
+      if (st === "neon") {
+        stageCaption.classList.add("bg-indigo-950/85", "text-cyan-300", "border", "border-cyan-400/60");
+      } else if (st === "cinema") {
+        stageCaption.classList.add("bg-black/85", "text-white", "border", "border-slate-500/50");
+      } else {
+        stageCaption.classList.add("bg-slate-950/85", "text-amber-300", "border", "border-amber-400/50");
+      }
+    }
+
+    if (subStyleSelect) subStyleSelect.addEventListener("change", applySubStyle);
+    applySubStyle();
+
+    if (musicFileInput) {
+      musicFileInput.addEventListener("change", () => {
+        const f = musicFileInput.files && musicFileInput.files[0];
+        if (f) {
+          bgAudioPlayer.src = URL.createObjectURL(f);
+        }
+      });
+    }
+    if (musicUrlInput) {
+      musicUrlInput.addEventListener("change", () => {
+        if (musicUrlInput.value.trim()) bgAudioPlayer.src = musicUrlInput.value.trim();
+      });
+    }
+
+    if (previewBtn && stageImg) {
+      previewBtn.addEventListener("click", () => {
+        applySubStyle();
+        const tr = transitionSelect ? transitionSelect.value : "zoom";
+        stageImg.style.transform = tr === "zoom" ? "scale(1.08)" : tr === "pan" ? "scale(1.08) translateX(-12px)" : "scale(1)";
+        if (bgAudioPlayer.src) bgAudioPlayer.play().catch(() => {});
+      });
+    }
+    if (stopBtn) {
+      stopBtn.addEventListener("click", () => {
+        bgAudioPlayer.pause();
+        bgAudioPlayer.currentTime = 0;
+        if (stageImg) stageImg.style.transform = "scale(1)";
+      });
+    }
+
   </script>
 </body>
 </html>
