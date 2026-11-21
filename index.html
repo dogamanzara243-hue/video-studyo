@@ -8,6 +8,26 @@
   <meta name="robots" content="index, follow" />
   <link rel="canonical" href="https://dogamanzara243-hue.github.io/video-studyo/" />
   <script src="https://cdn.tailwindcss.com"></script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Bu araçlar ücretsiz mi?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Evet. Tarayıcı arayüzü ve açık kaynaklı araçlar ücretsiz olarak kullanılabilir." }
+      },
+      {
+        "@type": "Question",
+        "name": "Google Colab neden kullanılıyor?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Seslendirme, görsel üretimi ve MP4 render işlemlerini kendi oturumunuzda çalıştırabilmeniz için Colab bağlantısı sunulur." }
+      }
+    ]
+  }
+  </script>
+
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans">
   <nav class="sticky top-0 z-50 backdrop-blur-md bg-slate-950/85 border-b border-slate-800">
@@ -317,6 +337,51 @@ demo.launch(share=True, debug=False)</code></pre>
 
   
   <!-- BİZE DESTEK OLUN & ALT BİLGİ -->
+  
+  <!-- HIZLI PAYLAŞIM ÇUBUĞU -->
+  <section id="hizli-paylasim" class="max-w-4xl mx-auto mt-8 px-4">
+    <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+      <div class="text-xs sm:text-sm font-semibold text-slate-300">
+        🔗 Video Birleştirici Stüdyosu sayfasını paylaşın:
+      </div>
+      <div class="flex flex-wrap items-center gap-2 text-xs">
+        <button type="button" onclick="navigator.clipboard.writeText(window.location.href); this.innerText='✅ Link Kopyalandı'; setTimeout(()=>this.innerText='📋 Linki Kopyala', 2000);" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 font-semibold transition">
+          📋 Linki Kopyala
+        </button>
+        <a href="https://twitter.com/intent/tweet?url=" onclick="this.href='https://twitter.com/intent/tweet?url='+encodeURIComponent(window.location.href)+'&text='+encodeURIComponent(document.title);" target="_blank" rel="noopener" class="px-3 py-1.5 rounded-lg bg-sky-600/20 hover:bg-sky-600/35 text-sky-300 border border-sky-500/30 font-semibold transition">
+          𝕏 Paylaş
+        </a>
+        <a href="https://wa.me/?text=" onclick="this.href='https://wa.me/?text='+encodeURIComponent(document.title+' - '+window.location.href);" target="_blank" rel="noopener" class="px-3 py-1.5 rounded-lg bg-emerald-600/20 hover:bg-emerald-600/35 text-emerald-300 border border-emerald-500/30 font-semibold transition">
+          💬 WhatsApp
+        </a>
+        <a href="https://t.me/share/url?url=" onclick="this.href='https://t.me/share/url?url='+encodeURIComponent(window.location.href)+'&text='+encodeURIComponent(document.title);" target="_blank" rel="noopener" class="px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/35 text-indigo-300 border border-indigo-500/30 font-semibold transition">
+          ✈️ Telegram
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- SIK SORULAN SORULAR (SSS) -->
+  <section id="sss" class="max-w-4xl mx-auto mt-8 px-4">
+    <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-6 space-y-4">
+      <h2 class="text-lg font-bold text-white">❓ Sık Sorulan Sorular</h2>
+      <div class="space-y-3 text-xs sm:text-sm text-slate-300">
+        <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5">
+          <div class="font-bold text-indigo-300 mb-1">Bu araçlar ücretsiz mi?</div>
+          <p class="text-slate-400">Evet. Tarayıcı arayüzü ve açık kaynaklı Colab/bulut araçları ücretsiz olarak kullanılabilir.</p>
+        </div>
+        <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5">
+          <div class="font-bold text-amber-300 mb-1">Google Colab neden kullanılıyor?</div>
+          <p class="text-slate-400">Seslendirme, görsel üretimi ve MP4 video render işlemlerini kendi ücretsiz oturumunuzda kesintisiz çalıştırabilmeniz için Colab bağlantısı sunulur.</p>
+        </div>
+        <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-3.5">
+          <div class="font-bold text-emerald-300 mb-1">Verilerim güvende mi ve kaybolur mu?</div>
+          <p class="text-slate-400">Taslak ve ayarlar tarayıcınızdaki localStorage üzerinde tutulur; istediğiniz zaman sıfırlayabilirsiniz.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+  
   <section id="destek-ol" class="max-w-4xl mx-auto mt-8 px-4">
     <div class="bg-gradient-to-br from-slate-900 via-slate-900 to-rose-950/30 border border-rose-500/30 rounded-2xl p-6 text-center space-y-2">
       <span class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-rose-500/15 text-rose-300 border border-rose-500/30">☕ Projeye Destek Ol</span>
