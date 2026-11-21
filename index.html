@@ -95,6 +95,8 @@
         <div class="flex flex-wrap items-center gap-2">
           <span class="text-slate-400 font-semibold">Şablonlar:</span>
           <button id="tplStoryBtn" type="button" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 font-semibold transition">📖 Kısa Hikaye (3 Sahne)</button>
+          <button id="tplThinkerBtn" type="button" class="px-2.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/35 text-amber-200 border border-amber-500/30 font-semibold transition">🏛️ Düşünür Sözü</button>
+          <button id="tplNightMotivBtn" type="button" class="px-2.5 py-1.5 rounded-lg bg-purple-600/20 hover:bg-purple-600/35 text-purple-200 border border-purple-500/30 font-semibold transition">🌙 Gece Motivasyonu</button>
           <button id="tplMotivBtn" type="button" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 font-semibold transition">🔥 Motivasyon (3 Sahne)</button>
           <button id="importBridgeBtn" type="button" class="px-2.5 py-1.5 rounded-lg bg-indigo-600/25 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/30 font-semibold transition">📥 Stüdyolardan Al</button>
         </div>
@@ -910,6 +912,63 @@ demo.launch(share=True, debug=False)</code></pre>
           sfxPlayer.src = sfx;
           sfxPlayer.play().catch(() => {});
         }
+      });
+    }
+
+  
+    
+    const tplThinkerBtn = document.getElementById("tplThinkerBtn");
+    const tplNightMotivBtn = document.getElementById("tplNightMotivBtn");
+
+    function applySpecialReelsTemplate(scenesList, styleVal = "classic", transVal = "zoom") {
+      if (typeof loadTemplates === "function") {
+        loadTemplates(scenesList);
+      } else if (scenesContainer && typeof addScene === "function") {
+        scenesContainer.innerHTML = "";
+        scenesList.forEach(s => addScene(s.img, s.cap, s.dur));
+      }
+      if (typeof subStyleSelect !== "undefined" && subStyleSelect) {
+        subStyleSelect.value = styleVal;
+        if (typeof applySubStyle === "function") applySubStyle();
+      }
+      if (typeof transitionSelect !== "undefined" && transitionSelect) {
+        transitionSelect.value = transVal;
+      }
+      if (typeof saveDraftNow === "function") saveDraftNow();
+      if (typeof showStatus === "function") showStatus("✅ Reels şablonu yüklendi! İsterseniz müzik linki ekleyip Önizle veya MP4 Üret diyebilirsiniz.");
+    }
+
+    if (tplThinkerBtn) {
+      tplThinkerBtn.addEventListener("click", () => {
+        applySpecialReelsTemplate([
+          {
+            img: "https://image.pollinations.ai/prompt/stoic%20marble%20philosopher%20bust%20dramatic%20golden%20rim%20light%20dark%20background%208k?width=768&height=1344&nologo=true",
+            cap: "Zihninde huzur kurabilen, dış dünyadaki fırtınadan etkilenmez. — Marcus Aurelius",
+            dur: 5
+          },
+          {
+            img: "https://image.pollinations.ai/prompt/ancient%20roman%20columns%20misty%20morning%20light%20stoic%20mood%208k?width=768&height=1344&nologo=true",
+            cap: "Kontrol edemediğin şeylere değil, tepkilerine hakim ol. — Epiktetos",
+            dur: 5
+          }
+        ], "classic", "zoom");
+      });
+    }
+
+    if (tplNightMotivBtn) {
+      tplNightMotivBtn.addEventListener("click", () => {
+        applySpecialReelsTemplate([
+          {
+            img: "https://image.pollinations.ai/prompt/lone%20person%20looking%20at%20rainy%20city%20lights%20at%20night%20cinematic%20moody%208k?width=768&height=1344&nologo=true",
+            cap: "Herkes uyurken sessizce çalışanlar, yarının hikayesini yazar.",
+            dur: 4
+          },
+          {
+            img: "https://image.pollinations.ai/prompt/glowing%20desk%20lamp%20notebook%20late%20night%20focus%20cinematic%208k?width=768&height=1344&nologo=true",
+            cap: "Küçük bir adımı bugün atmak, yarınki pişmanlıktan iyidir.",
+            dur: 4
+          }
+        ], "neon", "pan");
       });
     }
 
