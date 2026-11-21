@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ücretsiz AI Video Birleştirici ve Sahne Stüdyosu | AI Stüdyo</title>
+  <meta name="description" content="Görsellerinizi, seslendirmelerinizi ve altyazılarınızı sahne sahne birleştirerek Reels, Shorts ve videolar hazırlayın." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://dogamanzara243-hue.github.io/video-studyo/" />
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans">
+  <nav class="sticky top-0 z-50 backdrop-blur-md bg-slate-950/85 border-b border-slate-800">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <a href="https://dogamanzara243-hue.github.io/ses-klonlama-studyo/" class="font-extrabold text-lg bg-gradient-to-r from-indigo-400 to-emerald-400 bg-clip-text text-transparent">
+        ✨ AI İçerik Stüdyosu
+      </a>
+      <div class="flex items-center gap-2 text-xs sm:text-sm">
+        <a href="https://dogamanzara243-hue.github.io/ses-klonlama-studyo/" class="px-3 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800 transition">🎙️ Seslendirme</a>
+        <a href="https://dogamanzara243-hue.github.io/gorsel-studyo/" class="px-3 py-1.5 rounded-lg text-slate-300 hover:bg-slate-800 transition">🎨 Görsel Üretim</a>
+        <a href="https://dogamanzara243-hue.github.io/video-studyo/" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-semibold">🎬 Video Birleştirici</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-4xl mx-auto mt-8 px-4 space-y-6">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 shadow-xl space-y-6">
+      <div class="border-b border-slate-800 pb-4 flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h1 class="text-2xl md:text-3xl font-extrabold text-white">🎬 Çok Sahneli AI Video Birleştirici</h1>
+          <p class="text-sm text-slate-400 mt-1">Sahne görsellerini, altyazı metinlerini ve süreleri ekleyip sırayla önizleyin.</p>
+        </div>
+        <button id="addSceneBtn" type="button" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-sm font-bold transition">
+          + Sahne Ekle
+        </button>
+      </div>
+
+      <div id="scenesContainer" class="space-y-4"></div>
+
+      <div class="flex flex-wrap gap-3 pt-2">
+        <button id="previewBtn" type="button" class="flex-1 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 font-bold text-sm transition">
+          ▶️ Sahneleri Sırayla Oynat
+        </button>
+        <button id="stopBtn" type="button" class="px-5 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 font-semibold text-sm transition">
+          ⏹️ Durdur
+        </button>
+      </div>
+
+      <div class="bg-slate-950 border border-slate-800 rounded-2xl p-5 flex flex-col items-center space-y-3">
+        <div class="relative w-64 aspect-[9/16] rounded-xl overflow-hidden bg-slate-900 border border-slate-700 shadow-2xl flex items-center justify-center">
+          <img id="stageImg" src="" alt="Sahne Önizleme" class="w-full h-full object-cover transition-transform duration-1000" />
+          <div id="stageCaption" class="absolute bottom-6 inset-x-3 text-center text-sm font-extrabold text-white bg-black/70 px-3 py-2 rounded-lg backdrop-blur-sm">
+            Sahne önizlemesi burada görünür
+          </div>
+        </div>
+        <p id="stageInfo" class="text-xs text-slate-400">Hazır • Sahne ekleyin veya Oynat'a basın</p>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const scenesContainer = document.getElementById("scenesContainer");
+    const addSceneBtn = document.getElementById("addSceneBtn");
+    const previewBtn = document.getElementById("previewBtn");
+    const stopBtn = document.getElementById("stopBtn");
+    const stageImg = document.getElementById("stageImg");
+    const stageCaption = document.getElementById("stageCaption");
+    const stageInfo = document.getElementById("stageInfo");
+
+    let isPlaying = false;
+    let playTimer = null;
+
+    function addScene(imgUrl = "", caption = "", duration = 4) {
+      const idx = scenesContainer.children.length + 1;
+      const card = document.createElement("div");
+      card.className = "scene-card bg-slate-800/60 border border-slate-700 rounded-xl p-4 space-y-3";
+      card.innerHTML = `
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wider text-emerald-400">Sahne #${idx}</span>
+          <button type="button" class="remove-scene text-xs text-rose-400 hover:text-rose-300">Kaldır</button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <input type="url" value="${imgUrl}" placeholder="Görsel linki (URL)..." class="scene-img sm:col-span-2 rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" />
+          <input type="number" min="1" max="30" value="${duration}" placeholder="Süre (sn)" class="scene-dur rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" />
+        </div>
+        <input type="text" value="${caption}" placeholder="Sahne altyazısı..." class="scene-cap w-full rounded-lg bg-slate-900 border border-slate-700 px-3 py-2 text-sm" />
+      `;
+      card.querySelector(".remove-scene").addEventListener("click", () => card.remove());
+      scenesContainer.appendChild(card);
+    }
+
+    addSceneBtn.addEventListener("click", () => addScene("", "", 4));
+
+    function stopPlayback() {
+      isPlaying = false;
+      if (playTimer) clearTimeout(playTimer);
+      stageImg.style.transform = "scale(1)";
+      stageInfo.textContent = "Durduruldu.";
+    }
+
+    stopBtn.addEventListener("click", stopPlayback);
+
+    previewBtn.addEventListener("click", () => {
+      stopPlayback();
+      const cards = [...document.querySelectorAll(".scene-card")];
+      const scenes = cards.map((c, i) => ({
+        num: i + 1,
+        img: c.querySelector(".scene-img").value.trim(),
+        cap: c.querySelector(".scene-cap").value.trim() || `Sahne ${i + 1}`,
+        dur: Math.max(1, Number(c.querySelector(".scene-dur").value) || 4)
+      }));
+
+      if (!scenes.length) {
+        stageInfo.textContent = "Önce en az bir sahne ekleyin.";
+        return;
+      }
+
+      isPlaying = true;
+      let i = 0;
+
+      function runStep() {
+        if (!isPlaying || i >= scenes.length) {
+          isPlaying = false;
+          stageImg.style.transform = "scale(1)";
+          stageInfo.textContent = "Tüm sahneler tamamlandı.";
+          return;
+        }
+        const s = scenes[i];
+        if (s.img) stageImg.src = s.img;
+        stageCaption.textContent = s.cap;
+        stageInfo.textContent = `Oynatılıyor: Sahne ${s.num} / ${scenes.length} (${s.dur} sn)`;
+        stageImg.style.transform = "scale(1.08)";
+        const currentDur = s.dur * 1000;
+        i++;
+        playTimer = setTimeout(runStep, currentDur);
+      }
+
+      runStep();
+    });
+
+    addScene("", "İlk sahne altyazısını buraya yazın", 4);
+  </script>
+</body>
+</html>
