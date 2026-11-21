@@ -126,7 +126,115 @@
       <li><strong>↑ / ↓ / Kopyala</strong> butonlarıyla sahne sırasını düzenleyin ve <strong>▶️ Önizle</strong> ile 9:16 görünümü kontrol edin.</li>
       <li>Gerçek <strong>MP4</strong> dosyası almak için <strong>Google Colab'i Aç</strong> butonuna tıklayıp MP4 render kodunu çalıştırın; oluşan <code class="bg-slate-800 px-1.5 py-0.5 rounded text-emerald-300">https://xxxx.gradio.live</code> adresini yukarıdaki <strong>Colab MP4 Render API Linki</strong> kutusuna yapıştırıp <strong>🎥 MP4 Video Üret</strong>'e basın.</li>
     </ol>
-  </section>
+  
+    <!-- MP4 RENDER KODU KOPYALAMA ALANI -->
+    <div id="render-kod-kutusu" class="mt-4 space-y-2">
+      <div class="text-xs font-semibold text-emerald-300">Colab MP4 Render Kodu:</div>
+      <div class="relative">
+        <button id="copyRenderCodeBtn" type="button" onclick="navigator.clipboard.writeText(document.getElementById('colabRenderCode').innerText); this.innerText='✅ Kopyalandı!'; setTimeout(()=>this.innerText='📋 Kodu Kopyala', 2000);" class="absolute top-2.5 right-2.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition z-10">
+          📋 Kodu Kopyala
+        </button>
+        <pre id="colabRenderCode" class="bg-slate-900 border border-slate-800 rounded-xl p-4 pt-11 text-xs text-slate-300 overflow-x-auto max-h-80"><code>!pip install -q edge-tts moviepy pillow gradio requests numpy
+import os, json, uuid, requests, edge_tts, gradio as gr
+from PIL import Image, ImageDraw, ImageFont
+from moviepy.editor import ImageClip, AudioFileClip, CompositeVideoClip, concatenate_videoclips
+
+def altyazi_ekle_kare(img_path, text, out_path, size=(1080, 1920)):
+    im = Image.open(img_path).convert("RGB")
+    target_w, target_h = size
+    src_w, src_h = im.size
+    scale = max(target_w / src_w, target_h / src_h)
+    new_w, new_h = int(src_w * scale), int(src_h * scale)
+    im = im.resize((new_w, new_h), Image.Resampling.LANCZOS)
+    left = (new_w - target_w) // 2
+    top = (new_h - target_h) // 2
+    im = im.crop((left, top, left + target_w, top + target_h))
+
+    draw = ImageDraw.Draw(im)
+    box_top, box_bottom = int(target_h * 0.74), int(target_h * 0.87)
+    draw.rounded_rectangle([(60, box_top), (target_w - 60, box_bottom)], radius=28, fill=(10, 15, 28), outline=(70, 85, 115), width=3)
+
+    words = text.strip().split()
+    lines, current = [], ""
+    for w in words:
+        test = f"{current} {w}".strip()
+        if len(test) <= 34:
+            current = test
+        else:
+            if current: lines.append(current)
+            current = w
+    if current: lines.append(current)
+    lines = lines[:3]
+
+    try:
+        font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 44)
+    except Exception:
+        font = ImageFont.load_default()
+
+    y = box_top + 28
+    for line in lines:
+        bbox = draw.textbbox((0, 0), line, font=font)
+        tw = bbox[2] - bbox[0]
+        x = (target_w - tw) // 2
+        draw.text((x + 2, y + 2), line, font=font, fill=(0, 0, 0))
+        draw.text((x, y), line, font=font, fill=(255, 225, 90))
+        y += 58
+
+    im.save(out_path, quality=92)
+
+async def render_coklu_mp4(scenes_json, voice="tr-TR-AhmetNeural", rate="+5%"):
+    scenes = json.loads(scenes_json)
+    if not scenes or not isinstance(scenes, list):
+        raise gr.Error("En az bir sahne göndermelisiniz.")
+
+    work_dir = f"/tmp/render_{uuid.uuid4().hex[:8]}"
+    os.makedirs(work_dir, exist_ok=True)
+    clips = []
+
+    for idx, s in enumerate(scenes):
+        img_url = (s.get("img") or "").strip()
+        caption = (s.get("cap") or f"Sahne {idx + 1}").strip()
+        min_dur = max(1.0, float(s.get("dur") or 4))
+
+        img_raw = os.path.join(work_dir, f"raw_{idx}.jpg")
+        img_styled = os.path.join(work_dir, f"frame_{idx}.jpg")
+        audio_mp3 = os.path.join(work_dir, f"voice_{idx}.mp3")
+
+        if img_url:
+            r = requests.get(img_url, timeout=25)
+            r.raise_for_status()
+            with open(img_raw, "wb") as f:
+                f.write(r.content)
+        else:
+            Image.new("RGB", (1080, 1920), (20, 28, 48)).save(img_raw)
+
+        altyazi_ekle_kare(img_raw, caption, img_styled)
+        await edge_tts.Communicate(caption, voice, rate=rate).save(audio_mp3)
+        audio_clip = AudioFileClip(audio_mp3)
+        final_dur = max(min_dur, audio_clip.duration + 0.35)
+
+        base_canvas = ImageClip(img_styled).set_duration(final_dur)
+        zoom_clip = ImageClip(img_styled).set_duration(final_dur).resize(lambda t: 1.0 + 0.06 * (t / max(final_dur, 0.1))).set_position("center")
+        comp = CompositeVideoClip([base_canvas, zoom_clip], size=(1080, 1920)).set_audio(audio_clip)
+        clips.append(comp)
+
+    final_video = concatenate_videoclips(clips, method="compose")
+    out_mp4 = os.path.join(work_dir, "final_video.mp4")
+    final_video.write_videofile(out_mp4, fps=24, codec="libx264", audio_codec="aac", logger=None)
+    return out_mp4
+
+with gr.Blocks(title="AI Çok Sahneli MP4 Render Motoru") as demo:
+    scenes_in = gr.Textbox(label="Sahneler JSON")
+    voice_in = gr.Textbox(value="tr-TR-AhmetNeural", label="Ses")
+    rate_in = gr.Textbox(value="+5%", label="Hız")
+    btn = gr.Button("MP4 Üret", variant="primary")
+    vid_out = gr.Video(label="Hazır MP4")
+    btn.click(fn=render_coklu_mp4, inputs=[scenes_in, voice_in, rate_in], outputs=vid_out, api_name="mp4_uret")
+
+demo.launch(share=True, debug=False)</code></pre>
+      </div>
+    </div>
+</section>
 
     </div>
   </main>
